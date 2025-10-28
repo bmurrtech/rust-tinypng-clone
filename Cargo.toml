@@ -1,0 +1,39 @@
+[package]
+name = "rust_tinypng_clone"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+walkdir = "2"
+humansize = "2"
+infer = "0.15"
+image = { version = "0.25", default-features = false, features = ["png","jpeg","bmp","tiff","ico"] }
+libheif-rs = { version = "0.22", optional = true }
+
+# Core codecs (Rust-native)
+imagequant = "4"
+oxipng = "9"
+mozjpeg = "0.10"
+webp = "0.2"
+ravif = "0.11"
+rgb = "0.8"
+
+# Web server dependencies
+axum = "0.7"
+axum-extra = { version = "0.9", features = ["multipart"] }
+tokio = { version = "1.0", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+webbrowser = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+num_cpus = "1.0"
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"

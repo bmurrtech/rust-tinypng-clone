@@ -1,0 +1,45 @@
+# Rust
+target/
+Cargo.lock
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+pm/
+
+# Test files
+test_images/
+
+# Environment
+.env
+.env.*
+
+# Build artifacts
+*.exe
+*.deb
+*.rpm
+*.pkg
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Temporary files
+*.tmp
+*.temp
+create_*.py
+create_*.rs
