@@ -25,6 +25,7 @@ use axum_extra::extract::Multipart;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
+use reqwest;
 
 /// CLI options
 #[derive(Parser, Debug)]
@@ -57,9 +58,11 @@ struct Args {
     #[arg(long = "png-lossy", action = ArgAction::SetTrue, default_value_t = true)]
     png_lossy: bool,
 
-    /// pngquant-like quality range (e.g. 50-80)
-    #[arg(long, default_value = "50-80")]
-    png_quality: String,
+    /// Compression level: low (best quality), mid (balanced), or max (smallest file)
+    /// Can also use granular format like "low-85" or "mid-75" for fine control
+    #[arg(long, default_value = "mid")]
+    compression_lvl: String,
+
 
     /// Run oxipng after quantization (lossless structural optimization)
     #[arg(long = "oxipng", action = ArgAction::SetTrue, default_value_t = true)]
@@ -103,6 +106,16 @@ fn parse_quality_range(s: &str) -> (u8, u8) {
     let min = parts.get(0).and_then(|p| p.parse::<u8>().ok()).unwrap_or(50);
     let max = parts.get(1).and_then(|p| p.parse::<u8>().ok()).unwrap_or(80);
     (min, max)
+}
+
+/// Map compression level (low/mid/max) to quality range
+fn compression_level_to_range(level: &str) -> String {
+    match level.to_lowercase().as_str() {
+        "low" => "70-90".to_string(),
+        "mid" => "50-80".to_string(),
+        "max" => "20-60".to_string(),
+        _ => "50-80".to_string(), // Default to mid
+    }
 }
 
 /// PNG: quantize via libimagequant + optional oxipng (lossless)
@@ -424,11 +437,12 @@ async fn serve_index() -> Html<&'static str> {
 async fn compress_api(mut multipart: Multipart) -> Result<Response, StatusCode> {
     let mut file_bytes = Vec::new();
     let mut filename = String::new();
+    // Default: webp output, mid compression, lossy PNG with oxipng
     let mut opts = CompressionOptions {
         png_lossy: true,
         png_quality: "50-80".to_string(),
         oxipng: true,
-        to_webp: false,
+        to_webp: true, // Default to WebP
         to_avif: false,
         to_jpeg: false,
         to_png: false,
@@ -445,12 +459,46 @@ async fn compress_api(mut multipart: Multipart) -> Result<Response, StatusCode> 
                 filename = field.file_name().unwrap_or("image").to_string();
                 file_bytes = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?.to_vec();
             }
-            "png_quality" => {
+            "compression_lvl" => {
+                // Primary parameter: low, mid, or max (with optional granular control)
                 let value = field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?;
-                opts.png_quality = value;
+                opts.png_quality = compression_level_to_range(&value);
+            }
+            "media_url" => {
+                // Fetch remote image from URL
+                let url = field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+                
+                // Fetch the image
+                let response = reqwest::get(&url).await.map_err(|_| StatusCode::BAD_REQUEST)?;
+                if !response.status().is_success() {
+                    log::error!("❌ API: Failed to fetch image from URL: {}", url);
+                    return Err(StatusCode::BAD_REQUEST);
+                }
+                
+                file_bytes = response.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?.to_vec();
+                
+                // Try to extract filename from URL
+                if let Ok(parsed_url) = url::Url::parse(&url) {
+                    if let Some(segment) = parsed_url.path_segments().and_then(|segments| segments.last()) {
+                        filename = segment.to_string();
+                    }
+                }
+                
+                if filename.is_empty() {
+                    filename = "image".to_string();
+                }
             }
             "output_format" => {
                 let value = field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+                // Reset format flags
+                opts.to_webp = false;
+                opts.to_avif = false;
+                opts.to_jpeg = false;
+                opts.to_png = false;
+                opts.to_tiff = false;
+                opts.to_bmp = false;
+                opts.to_ico = false;
+                
                 match value.as_str() {
                     "webp" => opts.to_webp = true,
                     "avif" => opts.to_avif = true,
@@ -459,7 +507,8 @@ async fn compress_api(mut multipart: Multipart) -> Result<Response, StatusCode> 
                     "tiff" => opts.to_tiff = true,
                     "bmp" => opts.to_bmp = true,
                     "ico" => opts.to_ico = true,
-                    _ => {} // keep original
+                    "original" => {} // keep original format
+                    _ => {} // default to webp (already set)
                 }
             }
             "oxipng" => {
@@ -595,6 +644,9 @@ async fn run_cli_mode(args: &Args) -> Result<()> {
         return Ok(());
     }
 
+    // Determine quality from compression level
+    let quality = compression_level_to_range(&args.compression_lvl);
+
     let results: Vec<_> = files
         .par_iter()
         .map(|f| {
@@ -627,7 +679,7 @@ async fn run_cli_mode(args: &Args) -> Result<()> {
             // Create compression options from CLI args
             let opts = CompressionOptions {
                 png_lossy: args.png_lossy,
-                png_quality: args.png_quality.clone(),
+                png_quality: quality.clone(),
                 oxipng: args.oxipng,
                 to_webp: args.to_webp,
                 to_avif: args.to_avif,

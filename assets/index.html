@@ -457,7 +457,7 @@
 
         <div class="convert-section">
             <button type="button" class="convert-button" id="convertButton">
-                🚀 Convert Images
+                Compress
             </button>
         </div>
 
@@ -490,9 +490,10 @@
         const advancedArrow = document.getElementById('advancedArrow');
         const convertButton = document.getElementById('convertButton');
         let selectedFiles = [];
+        let hasCompressedFiles = false;
 
-        // Quality slider handling (reversed logic: higher compression = lower quality ranges)
-        const qualityLabels = ['Low (Best Quality)', 'Mid (Recommended)', 'Max (Highest Compression)'];
+        // Compression level handling: Low quality preservation, Mid balanced, Max compression
+        const qualityLabels = ['Low (Best Quality)', 'Mid (Recommended)', 'Max (Smallest File)'];
         const qualityRanges = ['70-90', '50-80', '20-60'];
         
         qualitySlider.addEventListener('input', (e) => {
@@ -538,10 +539,15 @@
             // Update format buttons based on file types
             updateFormatButtons(selectedFiles);
             
+            // Reset state when new files are selected
+            hasCompressedFiles = false;
+            
             // Show convert button
             convertButton.classList.add('show');
-            convertButton.textContent = `🚀 Convert ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`;
+            convertButton.textContent = `Compress ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`;
             
+            // Reset any compressed results
+            resultsList.innerHTML = '';
             hideError();
             hideResults();
         });
@@ -549,14 +555,29 @@
         convertButton.addEventListener('click', async () => {
             if (selectedFiles.length === 0) return;
 
+            // If already compressed, download all files
+            if (hasCompressedFiles) {
+                // Trigger download for all compressed files
+                const downloadLinks = document.querySelectorAll('.download-link');
+                downloadLinks.forEach((link, index) => {
+                    setTimeout(() => {
+                        link.click();
+                    }, index * 200); // Stagger downloads
+                });
+                return;
+            }
+
             showProgress();
             hideError();
             hideResults();
 
             try {
                 await compressFiles(selectedFiles);
+                hasCompressedFiles = true;
+                convertButton.textContent = '📥 Download All';
             } catch (err) {
                 showError('Compression failed: ' + err.message);
+                hasCompressedFiles = false;
             } finally {
                 hideProgress();
             }
@@ -590,9 +611,10 @@
             const formData = new FormData();
             formData.append('file', file);
             
-            // Get quality range from slider
+            // Get compression level from slider
             const qualityIndex = parseInt(qualitySlider.value) - 1;
-            formData.append('png_quality', qualityRanges[qualityIndex]);
+            const levels = ['low', 'mid', 'max'];
+            formData.append('compression_lvl', levels[qualityIndex]);
             formData.append('output_format', selectedFormat);
             formData.append('oxipng', document.getElementById('oxipng').checked);
             formData.append('png_lossy', document.getElementById('pngLossy').checked);
@@ -672,7 +694,7 @@
             uploadButton.disabled = false;
             uploadButton.textContent = '📁 Select Images';
             uploadSection.classList.remove('uploading');
-            if (selectedFiles.length > 0) {
+            if (selectedFiles.length > 0 && !hasCompressedFiles) {
                 convertButton.textContent = `Compress ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`;
             }
         }

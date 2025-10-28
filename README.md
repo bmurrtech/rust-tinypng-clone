@@ -47,9 +47,9 @@ docker run -p 3030:3030 rust-tinypng
 ### Web Interface
 1. Launch the application (it auto-opens your browser)
 2. Select images using the "📁 Select Images" button
-3. Choose quality (Good/Better/Best) and output format
-4. Click "🚀 Convert Images" button
-5. Download compressed results
+3. Choose compression level (Low/Mid/Max) and output format
+4. Click the Compress button
+5. Download compressed results (button changes to "Download All" after compression)
 
 ### CLI Mode
 ```bash
@@ -75,33 +75,57 @@ POST http://localhost:3030/api/compress
 
 **Content-Type**: `multipart/form-data`
 
-**Parameters**:
-- `file`: Image file to compress
-- `output_format`: `original`, `png`, `jpeg`, `webp`, `avif`, `tiff`, `bmp`, `ico`
-- `png_quality`: Quality range (e.g., `50-80`)
-- `oxipng`: Boolean (`true`/`false`)
-- `png_lossy`: Boolean (`true`/`false`)
+**Parameters** (one of `file` or `media_url` required):
+- `file` *(required)*: Local image file path (e.g., `/path/to/file/image.png` or `C:\path\to\file\image.png`)
+- `media_url` *(required)*: Public URL to image (e.g., `https://example.com/image.png`, S3, GCP bucket, Azure Blob, etc.)
+- `compression_lvl` *(optional)*: Compression preset (`low`, `mid`, `max`)
+  - `low`: Best quality (70-90 range)
+  - `mid`: Balanced (50-80 range) - *default*
+  - `max`: Smallest file (20-60 range)
+- `output_format` *(optional)*: `original`, `png`, `jpeg`, `webp`, `avif`, `tiff`, `bmp`, `ico` (default: `webp`)
+- `oxipng` *(optional)*: Boolean (`true`/`false`, default: `true`)
+- `png_lossy` *(optional)*: Boolean (`true`/`false`, default: `true`)
 
 **Example with cURL**:
 ```bash
+# Minimal request with local file (uses defaults: mid compression, webp output)
+curl -X POST http://localhost:3030/api/compress \
+  -F "file=@/path/to/file/image.png" \
+  -o compressed_image.webp
+
+# With compression level preset
 curl -X POST http://localhost:3030/api/compress \
   -F "file=@image.png" \
+  -F "compression_lvl=max" \
+  -o compressed_image.webp
+
+# Compress from remote URL (S3, GCP, Azure Blob, etc.)
+curl -X POST http://localhost:3030/api/compress \
+  -F "media_url=https://example.s3.amazonaws.com/image.png" \
+  -F "compression_lvl=mid" \
   -F "output_format=webp" \
-  -F "png_quality=60-85" \
+  -o compressed_image.webp
+
+# Custom output format and compression
+curl -X POST http://localhost:3030/api/compress \
+  -F "file=@image.png" \
+  -F "compression_lvl=low" \
+  -F "output_format=png" \
   -F "oxipng=true" \
   -F "png_lossy=true" \
-  -o compressed_image.webp
+  -o compressed_image.png
 ```
 
 **Example with Postman**:
 1. Set method to `POST`
 2. URL: `http://localhost:3030/api/compress`
-3. Body → form-data:
-   - `file`: Select image file
-   - `output_format`: `webp` (or desired format)
-   - `png_quality`: `50-80`
-   - `oxipng`: `true`
-   - `png_lossy`: `true`
+3. Body → form-data (use either `file` OR `media_url`):
+   - `file`: Select local image file or enter path like `/path/to/file/image.png` *(required if not using media_url)*
+   - `media_url`: Enter public URL like `https://example.com/image.png` *(required if not using file)*
+   - `compression_lvl`: `mid` (or `low`, `max`) - *default: mid*
+   - `output_format`: `webp` (optional, defaults to webp)
+   - `oxipng`: `true` (optional, default: true)
+   - `png_lossy`: `true` (optional, default: true)
 
 ## 🧪 Testing
 

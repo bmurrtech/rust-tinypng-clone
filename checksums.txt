@@ -1,0 +1,2 @@
+657a246028449da2ba270764c3548d699ca7ffca219aaa4d33da2fd2d128fb09  target/aarch64-apple-darwin/release/rust_tinypng_clone
+a786f1828a477533dfdd2dec8fa48f9780396fe9bb501a63d917b56d48d3fa44  target/x86_64-pc-windows-gnu/release/rust_tinypng_clone.exe
