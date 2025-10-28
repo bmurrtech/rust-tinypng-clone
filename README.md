@@ -1,3 +1,5 @@
+![UI_2](https://github.com/bmurrtech/rust-tinypng-clone/blob/main/assets/UI_2.webp)
+![UI_1](https://github.com/bmurrtech/rust-tinypng-clone/blob/main/assets/UI_1.webp)
 # 🖼️ Rust TinyPNG
 
 A fast, private image compressor with TinyPNG-like behavior, built entirely in Rust. Features both a beautiful web UI and powerful CLI for local image compression with no external dependencies.
