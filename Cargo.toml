@@ -37,3 +37,14 @@ num_cpus = "1.0"
 [dev-dependencies]
 tempfile = "3.8"
 tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+# Windows cross-compilation
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"

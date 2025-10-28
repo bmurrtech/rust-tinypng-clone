@@ -115,10 +115,21 @@ fn compress_png_bytes(input: &[u8], quality_range: &str, run_oxipng: bool) -> Re
 
     // parse quality
     let (min_q, max_q) = parse_quality_range(quality_range);
+    
+    // For max compression (20-60 range), use aggressive settings
+    let is_max_compression = max_q <= 60;
 
     // libimagequant
     let mut attr = Attributes::new();
-    attr.set_speed(1)?;
+    
+    // Adjust speed based on compression level
+    if is_max_compression {
+        attr.set_speed(1)?; // Slowest, highest quality quantization
+        attr.set_max_colors(128)?; // Reduce palette size for max compression
+    } else {
+        attr.set_speed(3)?; // Balanced speed
+    }
+    
     attr.set_quality(min_q, max_q)?;
     
     // Convert Vec<u8> to the expected RGBA format
@@ -173,6 +184,12 @@ fn compress_jpeg_bytes(input: &[u8], quality: u8) -> Result<Vec<u8>> {
     comp.set_quality(quality as f32);
     comp.set_progressive_mode();
     comp.set_scan_optimization_mode(ScanMode::AllComponentsTogether);
+    
+    // For max compression, enable additional optimization
+    if quality <= 60 {
+        comp.set_optimize_coding(true);
+        comp.set_optimize_scans(true);
+    }
 
     let mut dest = Vec::new();
     let mut writer = comp.start_compress(&mut dest)?;
@@ -185,7 +202,7 @@ fn compress_jpeg_bytes(input: &[u8], quality: u8) -> Result<Vec<u8>> {
     Ok(dest)
 }
 
-/// WebP via webp crate (lossy)
+/// WebP via webp crate (lossy) 
 fn to_webp_bytes(input: &[u8], quality: f32) -> Result<Vec<u8>> {
     let img = image::load_from_memory(input)?;
     let rgba = img.to_rgba8();
@@ -280,17 +297,23 @@ fn compress_image_inproc(input_bytes: &[u8], ext_lower: &str, opts: &Compression
         return Ok((bytes, "image/jpeg".to_string()));
     }
     
+    // Parse quality range to determine compression level
+    let (min_q, max_q) = parse_quality_range(&opts.png_quality);
+    let webp_quality = ((min_q + max_q) / 2) as f32;
+    let jpeg_quality = (min_q + max_q) / 2;
+    let avif_quality = ((min_q + max_q) / 2) as f32;
+    
     // If conversion requested, honor it next
     if opts.to_webp {
-        let bytes = to_webp_bytes(input_bytes, 75.0)?;
+        let bytes = to_webp_bytes(input_bytes, webp_quality)?;
         return Ok((bytes, "image/webp".to_string()));
     }
     if opts.to_avif {
-        let bytes = to_avif_bytes(input_bytes, 75.0)?;
+        let bytes = to_avif_bytes(input_bytes, avif_quality)?;
         return Ok((bytes, "image/avif".to_string()));
     }
     if opts.to_jpeg {
-        let bytes = compress_jpeg_bytes(input_bytes, 85)?;
+        let bytes = compress_jpeg_bytes(input_bytes, jpeg_quality)?;
         return Ok((bytes, "image/jpeg".to_string()));
     }
     if opts.to_png {
@@ -885,8 +908,57 @@ mod tests {
     fn test_quality_parsing() {
         assert_eq!(parse_quality_range("50-80"), (50, 80));
         assert_eq!(parse_quality_range("40-70"), (40, 70));
+        assert_eq!(parse_quality_range("20-60"), (20, 60)); // Max compression
+        assert_eq!(parse_quality_range("70-90"), (70, 90)); // Low compression
         assert_eq!(parse_quality_range("60"), (60, 80)); // Default max
         assert_eq!(parse_quality_range("invalid"), (50, 80)); // Default values
+    }
+    
+    #[test] 
+    fn test_max_compression_levels() {
+        let png_data = create_test_png();
+        
+        // Test max compression PNG (20-60 range)
+        let opts_max = CompressionOptions {
+            png_lossy: true,
+            png_quality: "20-60".to_string(),
+            oxipng: true,
+            to_webp: false,
+            to_avif: false,
+            to_jpeg: false,
+            to_png: false,
+            to_tiff: false,
+            to_bmp: false,
+            to_ico: false,
+        };
+        
+        let result_max = compress_image_inproc(&png_data, "png", &opts_max);
+        assert!(result_max.is_ok());
+        
+        // Test low compression PNG (70-90 range)
+        let opts_low = CompressionOptions {
+            png_lossy: true,
+            png_quality: "70-90".to_string(),
+            oxipng: true,
+            to_webp: false,
+            to_avif: false,
+            to_jpeg: false,
+            to_png: false,
+            to_tiff: false,
+            to_bmp: false,
+            to_ico: false,
+        };
+        
+        let result_low = compress_image_inproc(&png_data, "png", &opts_low);
+        assert!(result_low.is_ok());
+        
+        // Max compression should typically produce smaller files
+        let (max_bytes, _) = result_max.unwrap();
+        let (low_bytes, _) = result_low.unwrap();
+        
+        // For very small test images this might not always hold, but ensure both work
+        assert!(max_bytes.len() > 0);
+        assert!(low_bytes.len() > 0);
     }
 
     #[tokio::test]

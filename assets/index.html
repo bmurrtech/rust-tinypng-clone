@@ -411,26 +411,26 @@
 
         <div class="options">
             <div class="option-group">
-                <label>Image Quality</label>
-                <div class="quality-value" id="qualityValue">Better (Recommended)</div>
+                <label>Compression Level</label>
+                <div class="quality-value" id="qualityValue">Mid (Recommended)</div>
                 <div class="quality-slider-container">
                     <input type="range" id="qualitySlider" class="quality-slider" min="1" max="3" value="2" step="1">
                 </div>
                 <div class="quality-labels">
-                    <span>Good</span>
-                    <span>Better</span>
-                    <span>Best</span>
+                    <span>Low</span>
+                    <span>Mid</span>
+                    <span>Max</span>
                 </div>
-                <div class="quality-note">Better Quality = Bigger File • Lower Quality = Smaller File</div>
+                <div class="quality-note">More Compression = Smaller File • Less Compression = Better Image Quality</div>
             </div>
 
             <div class="option-group">
                 <label>Output Format</label>
                 <div class="format-buttons" id="formatButtons">
-                    <button type="button" class="format-btn active" data-format="original" id="formatOriginal">Auto</button>
+                    <button type="button" class="format-btn" data-format="original" id="formatOriginal">Auto</button>
                     <button type="button" class="format-btn" data-format="png" id="formatPng">PNG</button>
                     <button type="button" class="format-btn" data-format="jpeg" id="formatJpeg">JPEG</button>
-                    <button type="button" class="format-btn" data-format="webp" id="formatWebp">WebP</button>
+                    <button type="button" class="format-btn active" data-format="webp" id="formatWebp">WebP</button>
                     <button type="button" class="format-btn" data-format="avif" id="formatAvif">AVIF</button>
                     <button type="button" class="format-btn" data-format="tiff" id="formatTiff">TIFF</button>
                     <button type="button" class="format-btn" data-format="bmp" id="formatBmp">BMP</button>
@@ -491,17 +491,17 @@
         const convertButton = document.getElementById('convertButton');
         let selectedFiles = [];
 
-        // Quality slider handling
-        const qualityLabels = ['Good', 'Better (Recommended)', 'Best'];
-        const qualityRanges = ['40-65', '50-80', '60-90'];
+        // Quality slider handling (reversed logic: higher compression = lower quality ranges)
+        const qualityLabels = ['Low (Best Quality)', 'Mid (Recommended)', 'Max (Highest Compression)'];
+        const qualityRanges = ['70-90', '50-80', '20-60'];
         
         qualitySlider.addEventListener('input', (e) => {
             const value = parseInt(e.target.value) - 1;
             qualityValue.textContent = qualityLabels[value];
         });
 
-        // Format button handling
-        let selectedFormat = 'original';
+        // Format button handling (default to WebP)
+        let selectedFormat = 'webp';
         formatButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 if (btn.classList.contains('disabled')) return;
