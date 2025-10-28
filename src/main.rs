@@ -475,15 +475,26 @@ async fn compress_api(mut multipart: Multipart) -> Result<Response, StatusCode> 
     }
 
     if file_bytes.is_empty() {
+        log::error!("❌ API: No file data received");
         return Err(StatusCode::BAD_REQUEST);
     }
 
     // Detect file extension
     let ext = filename.split('.').last().unwrap_or("").to_lowercase();
+    log::info!("🔍 API: Processing {} file: {} ({} bytes)", ext.to_uppercase(), filename, file_bytes.len());
     
     // Compress the image
+    let start_time = std::time::Instant::now();
     let (compressed_bytes, mime_type) = compress_image_inproc(&file_bytes, &ext, &opts)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            log::error!("❌ API: Compression failed for {}: {:?}", filename, e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    
+    let duration = start_time.elapsed();
+    let compression_ratio = (1.0 - (compressed_bytes.len() as f64 / file_bytes.len() as f64)) * 100.0;
+    log::info!("✅ API: Compressed {} in {:?} - {} -> {} bytes ({:.1}% reduction)", 
+               filename, duration, file_bytes.len(), compressed_bytes.len(), compression_ratio);
 
     // Determine output filename
     let output_filename = if opts.to_webp {

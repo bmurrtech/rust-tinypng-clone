@@ -73,6 +73,8 @@ ls -la releases/
 
 echo "✅ Build complete! Releases are in the ./releases directory"
 echo ""
-echo "📝 Note for Windows users:"
-echo "   The .exe file is unsigned and may trigger security warnings."
-echo "   Users should right-click → Properties → Unblock or add to antivirus exceptions."
+echo "📝 Platform Notes:"
+echo "   🍎 macOS: May need 'chmod +x' and 'xattr -d com.apple.quarantine'"
+echo "   🧾 Windows: Unsigned .exe may trigger SmartScreen warnings"
+echo "   🐧 Linux: Built for glibc-based distributions (Ubuntu, Debian, etc.)"
+echo "   📦 Debian ARM64: For Raspberry Pi 4+, AWS Graviton, Apple Silicon Linux"

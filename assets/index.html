@@ -421,7 +421,7 @@
                     <span>Mid</span>
                     <span>Max</span>
                 </div>
-                <div class="quality-note">More Compression = Smaller File • Less Compression = Better Image Quality</div>
+                <div class="quality-note">Max = Smaller File • Low = Better Image Quality</div>
             </div>
 
             <div class="option-group">
@@ -672,6 +672,9 @@
             uploadButton.disabled = false;
             uploadButton.textContent = '📁 Select Images';
             uploadSection.classList.remove('uploading');
+            if (selectedFiles.length > 0) {
+                convertButton.textContent = `Compress ${selectedFiles.length} Image${selectedFiles.length > 1 ? 's' : ''}`;
+            }
         }
 
         function updateProgress(percent) {
